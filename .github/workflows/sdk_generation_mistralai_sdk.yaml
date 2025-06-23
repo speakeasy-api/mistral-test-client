@@ -10,20 +10,118 @@ permissions:
       force:
         description: Force generation of SDKs
         type: boolean
-        default: false
-      set_version:
-        description: optionally set a specific SDK version
-        type: string
+        default: true
+
+env:
+  SPEAKEASY_CLI_LOCATION: /home/runner/work/changelog-test-repo/changelog-test-repo/bin/speakeasy
+  SPEAKEASY_CHANGELOG_DIR: /home/runner/work/changelog-test-repo/changelog-test-repo/changelog-dir
+  SPEAKEASY_ENVIRONMENT: local
+  INPUT_MODE: pr
+  INPUT_FORCE: true
+  TARGET: mistralai-sdk
+
+
 jobs:
   generate:
-    uses: speakeasy-api/sdk-generation-action/.github/workflows/workflow-executor.yaml@v15
-    with:
-      force: ${{ github.event.inputs.force }}
-      mode: pr
-      set_version: ${{ github.event.inputs.set_version }}
-      speakeasy_version: latest
-      target: mistralai-sdk
-    secrets:
-      github_access_token: ${{ secrets.SPEAKEASY_WORKFLOW_GITHUB_PAT }}
-      pypi_token: ${{ secrets.PYPI_TOKEN }}
-      speakeasy_api_key: ${{ secrets.SPEAKEASY_API_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create changelog directory
+        run: |
+          mkdir -p changelog-dir
+          echo "current working directory - $(pwd)"
+          echo "Created changelog directory at $(pwd)/changelog-dir"
+
+      - name: Download binary from release
+        run: |
+          echo "current working directory before mkdir  - $(pwd)"
+          mkdir -p bin
+          echo "current working directory - $(pwd)"
+          echo "Downloading speakeasy binary to: $(pwd)/bin/speakeasy"
+          curl -L -o bin/speakeasy https://github.com/speakeasy-api/changelog-test-repo/releases/download/v0.0.5/speakeasy
+          chmod +x bin/speakeasy
+          echo "github workspace - ${{ github.workspace }}"
+          echo "current working directory - $(pwd)"
+          echo "Full binary path: $(realpath bin/speakeasy)"
+          echo "Files in bin directory ->"
+          ls -la bin/
+          echo "Files in pwd directory ->"
+          ls -la .
+          echo "=== End of bin directory contents ==="
+          echo "SPEAKEASY_CLI_LOCATION=${{ github.workspace }}/bin/speakeasy" >> $GITHUB_ENV
+          echo "SPEAKEASY_CHANGELOG_DIR=${{ github.workspace }}/changelog-dir" >> $GITHUB_ENV
+
+      - name: Debug Binary Architecture
+        run: |
+          echo "=== Binary Architecture Debug ==="
+          echo "System architecture: $(uname -m)"
+          echo "System OS: $(uname -s)"
+          echo "Binary file info:"
+          file bin/speakeasy
+          echo "Binary permissions:"
+          ls -la bin/speakeasy
+          echo "Trying to run binary:"
+          bin/speakeasy --version || echo "Binary execution failed"
+          echo "=== End Binary Debug ==="
+
+      - name: Test Binary Execution
+        run: |
+          echo "Testing if binary can execute..."
+          if ${{ github.workspace }}/bin/speakeasy --version; then
+            echo "✅ Binary executes successfully"
+          else
+            echo "❌ Binary execution failed"
+            exit 1
+          fi
+
+      - name: Debug Environment Variables
+        run: |
+          echo "SPEAKEASY_CLI_LOCATION: ${{ env.SPEAKEASY_CLI_LOCATION }}"
+          echo "SPEAKEASY_CHANGELOG_DIR: ${{env.SPEAKEASY_CHANGELOG_DIR}}"
+          echo "SPEAKEASY_CLI_LOCATION: $(env.SPEAKEASY_CLI_LOCATION)"
+          echo "SPEAKEASY_CHANGELOG_DIR: $(env.SPEAKEASY_CHANGELOG_DIR)"
+
+      - name: Build and run custom SDK action
+        run: |
+          # Clone the repository with your changes
+          git clone https://github.com/speakeasy-api/sdk-generation-action.git /tmp/sdk-action
+          cd /tmp/sdk-action
+          git checkout changelog-additions-removals
+          
+          # Build the Docker image
+          docker build -t custom-sdk-action .
+          
+          # Run the container with your environment variables
+          docker run --rm \
+            -e SPEAKEASY_CLI_LOCATION="${{ github.workspace }}/bin/speakeasy" \
+            -e SPEAKEASY_CHANGELOG_DIR="${{ github.workspace }}/changelog-dir" \
+            -e GITHUB_ACCESS_TOKEN="${{ secrets.SPEAKEASY_WORKFLOW_GITHUB_PAT }}" \
+            -e INPUT_GITHUB_ACCESS_TOKEN="${{ secrets.SPEAKEASY_WORKFLOW_GITHUB_PAT }}" \
+            -e SPEAKEASY_API_KEY="${{ secrets.SPEAKEASY_API_KEY }}" \
+            -e GITHUB_SERVER_URL=https://github.com \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            -e GITHUB_REPOSITORY_OWNER="${{ github.repository_owner }}" \
+            -e GITHUB_REF=refs/heads/main \
+            -e GITHUB_OUTPUT=./output.txt \
+            -e GITHUB_WORKFLOW=test \
+            -e GITHUB_WORKSPACE="${{ github.workspace }}" \
+            -e SPEAKEASY_ENVIRONMENT=local \
+            -e INPUT_MODE=pr \
+            -e INPUT_FORCE=true \
+            -e TARGET=overlay-example \
+            -e GITHUB_RUN_ID="${{ github.run_id }}" \
+            -e GITHUB_RUN_ATTEMPT="${{ github.run_attempt }}" \
+            -v "${{ github.workspace }}:${{ github.workspace }}" \
+            -w "${{ github.workspace }}" \
+            custom-sdk-action
+# jobs:
+#   generate:
+#     uses: speakeasy-api/sdk-generation-action/.github/workflows/workflow-executor.yaml@v15
+#     with:
+#       force: ${{ github.event.inputs.force }}
+#       mode: pr
+#       set_version: ${{ github.event.inputs.set_version }}
+#       speakeasy_version: latest
+#       target: mistralai-sdk
