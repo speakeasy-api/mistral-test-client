@@ -37,8 +37,8 @@ targets:
     mistralai-sdk:
         source: mistral-openapi
         sourceNamespace: mistral-openapi
-        sourceRevisionDigest: sha256:21244d618cafcc163c3aa4acbc443ca16c63b8614632b65b87fbb2c4066987f3
-        sourceBlobDigest: sha256:74aeb6a2e0d466c206f983ce79581cc72d205cc7866826282c181207ebe841a2
+        sourceRevisionDigest: sha256:4155eac552142a3d72ea8dbd91319cb0be1f5e3e6cb974d6172a1659aaf90af7
+        sourceBlobDigest: sha256:cdcb47672426035c046c2701729fa31bce3f9cd659c09e2c8014e6e388526528
         codeSamplesNamespace: mistral-openapi-code-samples
         codeSamplesRevisionDigest: sha256:dc4396ba994048a9f31c008dced1a46a9e54d89973e9608039a7bc37b1052957
 workflow:

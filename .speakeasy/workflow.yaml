@@ -36,9 +36,6 @@ targets:
     mistralai-sdk:
         target: python
         source: mistral-openapi
-        publish:
-            pypi:
-                token: $pypi_token
         codeSamples:
             registry:
                 location: registry.speakeasyapi.dev/mistral-dev/mistral-dev/mistral-openapi-code-samples
